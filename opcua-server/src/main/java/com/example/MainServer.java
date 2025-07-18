@@ -18,13 +18,14 @@ public class MainServer {
         OpcUaServer server = new OpcUaServer(config);
 
         ExampleNamespace exampleNamespace = new ExampleNamespace(server);
-        server.getNamespaceTable().addUri(exampleNamespace.getNamespaceUri());
+
+        server.getNamespaceManager().registerAndAdd(exampleNamespace).get();
 
         server.startup().get();
 
         System.out.println("OPC UA Server running at opc.tcp://localhost:12686");
 
-        // Keep server running
+        // Keep server running indefinitely
         CompletableFuture<Void> future = new CompletableFuture<>();
         future.get();
     }

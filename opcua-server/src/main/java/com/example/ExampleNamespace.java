@@ -9,6 +9,7 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UByte;
 
 public class ExampleNamespace extends ManagedNamespace {
 
@@ -21,16 +22,15 @@ public class ExampleNamespace extends ManagedNamespace {
         UaFolderNode folderNode = new UaFolderNode(
             getNodeContext(),
             new NodeId(getNamespaceIndex(), "MyObjects"),
-            new LocalizedText("MyObjects")
+            LocalizedText.english("MyObjects")
         );
 
-        getNodeMap().addNode(folderNode);
-        getUaNamespace().addReference(
+        getNodeManager().addNode(folderNode);
+
+        folderNode.addReference(
             Identifiers.ObjectsFolder,
             Identifiers.Organizes,
-            true,
             folderNode.getNodeId().expanded(),
-            Identifiers.Organizes,
             false
         );
 
@@ -43,10 +43,12 @@ public class ExampleNamespace extends ManagedNamespace {
             .setValue(new DataValue(new Variant(20.0)))
             .build();
 
-        temperatureNode.setAccessLevel((byte) 0x03); // Read/Write
-        temperatureNode.setUserAccessLevel((byte) 0x03);
+        // Agora o accessLevel e userAccessLevel usam UByte
+        temperatureNode.setAccessLevel(UByte.valueOf(3)); // Read/Write
+        temperatureNode.setUserAccessLevel(UByte.valueOf(3));
 
-        getNodeMap().addNode(temperatureNode);
+        getNodeManager().addNode(temperatureNode);
+
         folderNode.addOrganizes(temperatureNode);
     }
 }
