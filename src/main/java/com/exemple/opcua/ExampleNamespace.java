@@ -2,30 +2,31 @@ package com.example.opcua;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.api.Namespace;
-import org.eclipse.milo.opcua.sdk.server.api.nodes.VariableNode;
-import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.FolderTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
-import org.eclipse.milo.opcua.sdk.server.util.SubscriptionModel;
+import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.types.builtin.*;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned;
-import org.eclipse.milo.opcua.stack.core.Identifiers;
+import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UShort;
 
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ExampleNamespace implements Namespace {
 
     private final OpcUaServer server;
-    private final String namespaceUri;
     private final UShort namespaceIndex;
-    private final AtomicLong nodeIdCounter = new AtomicLong(1);
-    private final SubscriptionModel subscriptionModel;
+    private final AtomicLong nodeIdCounter = new AtomicLong();
 
-    public ExampleNamespace(OpcUaServer server, String namespaceUri) {
+    private final String namespaceUri = "urn:example:opcua:weather";
+
+    public ExampleNamespace(OpcUaServer server) {
         this.server = server;
-        this.namespaceUri = namespaceUri;
-        this.namespaceIndex = server.getNamespaceManager().registerAndAddUri(namespaceUri);
-        this.subscriptionModel = new SubscriptionModel(server, this);
+        this.namespaceIndex = server.getNamespaceTable().addUri(namespaceUri);
+    }
+
+    @Override
+    public UShort getNamespaceIndex() {
+        return namespaceIndex;
     }
 
     @Override
@@ -35,29 +36,30 @@ public class ExampleNamespace implements Namespace {
 
     @Override
     public void onStartup() {
-        UaFolderNode rootFolder = new UaFolderNode(
+        // Cria a pasta raiz
+        UaFolderNode rootNode = new UaFolderNode(
             server.getNodeMap(),
-            new NodeId(namespaceIndex, "WSFolder"),
-            new QualifiedName(namespaceIndex, "WSFolder"),
+            new NodeId(namespaceIndex, "WeatherStations"),
+            new QualifiedName(namespaceIndex, "WeatherStations"),
             LocalizedText.english("WeatherStations")
         );
 
-        server.getNodeMap().addNode(rootFolder);
-        rootFolder.addReference(new Reference(
-            rootFolder.getNodeId(),
+        server.getNodeMap().addNode(rootNode);
+        server.getUaNamespace().addReference(
+            Identifiers.ObjectsFolder,
             Identifiers.Organizes,
-            Identifiers.ObjectsFolder.expanded(),
-            false
-        ));
+            true,
+            rootNode.getNodeId()
+        );
 
-        addWeatherStation(rootFolder, "WS_Ahead_H_IN");
+        // Cria uma estação de exemplo
+        createStation(rootNode, "WS_AHEAD_H_IN");
     }
 
-    private void addWeatherStation(UaFolderNode parent, String stationName) {
-        NodeId stationId = new NodeId(namespaceIndex, "Station." + stationName);
+    private void createStation(UaFolderNode parent, String stationName) {
         UaFolderNode stationNode = new UaFolderNode(
             server.getNodeMap(),
-            stationId,
+            new NodeId(namespaceIndex, "Station." + stationName),
             new QualifiedName(namespaceIndex, stationName),
             LocalizedText.english(stationName)
         );
@@ -65,31 +67,30 @@ public class ExampleNamespace implements Namespace {
         server.getNodeMap().addNode(stationNode);
         parent.addOrganizes(stationNode);
 
-        createVariable(stationNode, "temperature_dht11_C", 30.0);
-        createVariable(stationNode, "humidity_dht11_percent", 32.0);
-        createVariable(stationNode, "air_quality_V", 0.43);
-        createVariable(stationNode, "pressure_bme", 1012.5);
+        // Variáveis da estação
+        createVariable(stationNode, "temperature_C", 25.0);
+        createVariable(stationNode, "humidity_percent", 50.0);
+        createVariable(stationNode, "pressure_hPa", 1013.25);
     }
 
-    private void createVariable(UaFolderNode parent, String name, Object initialValue) {
-        NodeId variableId = new NodeId(namespaceIndex, name);
-
-        UaVariableNode variableNode = UaVariableNode.builder(server.getNodeMap())
-            .setNodeId(variableId)
+    private void createVariable(UaFolderNode parent, String name, double initialValue) {
+        UaVariableNode node = UaVariableNode.builder(server.getNodeMap())
+            .setNodeId(new NodeId(namespaceIndex, name))
             .setBrowseName(new QualifiedName(namespaceIndex, name))
             .setDisplayName(LocalizedText.english(name))
             .setDataType(Identifiers.Double)
             .setTypeDefinition(Identifiers.BaseDataVariableType)
+            .setAccessLevel(Unsigned.ubyte(3)) // READ_WRITE
+            .setUserAccessLevel(Unsigned.ubyte(3))
             .setValue(new DataValue(new Variant(initialValue)))
-            .setAccessLevel(Unsigned.ubyte(AccessLevel.getMask(AccessLevel.READ_WRITE)))
             .build();
 
-        server.getNodeMap().addNode(variableNode);
-        parent.addOrganizes(variableNode);
+        server.getNodeMap().addNode(node);
+        parent.addOrganizes(node);
     }
 
     @Override
     public void onShutdown() {
-        subscriptionModel.cleanup();
+        // cleanup opcional
     }
 }
