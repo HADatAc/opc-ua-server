@@ -5,28 +5,32 @@ import org.eclipse.milo.opcua.sdk.server.api.Namespace;
 import org.eclipse.milo.opcua.sdk.server.api.nodes.VariableNode;
 import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.FolderTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
-import org.eclipse.milo.opcua.sdk.server.util.NodeUtil;
+import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
+import org.eclipse.milo.opcua.sdk.server.util.SubscriptionModel;
 import org.eclipse.milo.opcua.stack.core.types.builtin.*;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned;
+import org.eclipse.milo.opcua.stack.core.Identifiers;
 
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ExampleNamespace implements Namespace {
 
-    private final String namespaceUri;
     private final OpcUaServer server;
+    private final String namespaceUri;
     private final UShort namespaceIndex;
     private final AtomicLong nodeIdCounter = new AtomicLong(1);
+    private final SubscriptionModel subscriptionModel;
 
     public ExampleNamespace(OpcUaServer server, String namespaceUri) {
         this.server = server;
         this.namespaceUri = namespaceUri;
-        this.namespaceIndex = server.getNamespaceTable().addUri(namespaceUri);
+        this.namespaceIndex = server.getNamespaceManager().registerAndAddUri(namespaceUri);
+        this.subscriptionModel = new SubscriptionModel(server, this);
     }
 
     @Override
-    public UShort getNamespaceIndex() {
-        return namespaceIndex;
+    public String getNamespaceUri() {
+        return namespaceUri;
     }
 
     @Override
@@ -37,15 +41,15 @@ public class ExampleNamespace implements Namespace {
             new QualifiedName(namespaceIndex, "WSFolder"),
             LocalizedText.english("WeatherStations")
         );
-        server.getNodeMap().addNode(rootFolder);
-        server.getUaNamespace().addReference(
-            Identifiers.ObjectsFolder,
-            Identifiers.Organizes,
-            true,
-            rootFolder.getNodeId()
-        );
 
-        // Exemplo: criar uma estação com variáveis
+        server.getNodeMap().addNode(rootFolder);
+        rootFolder.addReference(new Reference(
+            rootFolder.getNodeId(),
+            Identifiers.Organizes,
+            Identifiers.ObjectsFolder.expanded(),
+            false
+        ));
+
         addWeatherStation(rootFolder, "WS_Ahead_H_IN");
     }
 
@@ -57,10 +61,10 @@ public class ExampleNamespace implements Namespace {
             new QualifiedName(namespaceIndex, stationName),
             LocalizedText.english(stationName)
         );
+
         server.getNodeMap().addNode(stationNode);
         parent.addOrganizes(stationNode);
 
-        // Criar variáveis
         createVariable(stationNode, "temperature_dht11_C", 30.0);
         createVariable(stationNode, "humidity_dht11_percent", 32.0);
         createVariable(stationNode, "air_quality_V", 0.43);
@@ -69,18 +73,23 @@ public class ExampleNamespace implements Namespace {
 
     private void createVariable(UaFolderNode parent, String name, Object initialValue) {
         NodeId variableId = new NodeId(namespaceIndex, name);
-        QualifiedName browseName = new QualifiedName(namespaceIndex, name);
-        LocalizedText displayName = LocalizedText.english(name);
 
-        VariableNode variableNode = NodeUtil.createVariableNode(
-            server.getNodeMap(),
-            variableId,
-            browseName,
-            displayName,
-            new Variant(initialValue)
-        );
+        UaVariableNode variableNode = UaVariableNode.builder(server.getNodeMap())
+            .setNodeId(variableId)
+            .setBrowseName(new QualifiedName(namespaceIndex, name))
+            .setDisplayName(LocalizedText.english(name))
+            .setDataType(Identifiers.Double)
+            .setTypeDefinition(Identifiers.BaseDataVariableType)
+            .setValue(new DataValue(new Variant(initialValue)))
+            .setAccessLevel(Unsigned.ubyte(AccessLevel.getMask(AccessLevel.READ_WRITE)))
+            .build();
 
         server.getNodeMap().addNode(variableNode);
         parent.addOrganizes(variableNode);
+    }
+
+    @Override
+    public void onShutdown() {
+        subscriptionModel.cleanup();
     }
 }
