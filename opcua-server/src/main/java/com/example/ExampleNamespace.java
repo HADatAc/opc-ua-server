@@ -19,6 +19,7 @@ public class ExampleNamespace extends ManagedNamespace {
     }
 
     private void createNodes() {
+
         UaFolderNode folderNode = new UaFolderNode(
             getNodeContext(),
             new NodeId(getNamespaceIndex(), "MyObjects"),
@@ -27,10 +28,12 @@ public class ExampleNamespace extends ManagedNamespace {
 
         getNodeManager().addNode(folderNode);
 
-        folderNode.addReference(
+        getUaNamespace().addReference(
             Identifiers.ObjectsFolder,
             Identifiers.Organizes,
+            true,
             folderNode.getNodeId().expanded(),
+            Identifiers.Organizes,
             false
         );
 
@@ -43,12 +46,10 @@ public class ExampleNamespace extends ManagedNamespace {
             .setValue(new DataValue(new Variant(20.0)))
             .build();
 
-        // Agora o accessLevel e userAccessLevel usam UByte
         temperatureNode.setAccessLevel(UByte.valueOf(3)); // Read/Write
         temperatureNode.setUserAccessLevel(UByte.valueOf(3));
 
         getNodeManager().addNode(temperatureNode);
-
         folderNode.addOrganizes(temperatureNode);
     }
 }
