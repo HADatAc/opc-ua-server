@@ -7,7 +7,7 @@ def main():
     namespace = server.register_namespace("urn:example:weatherstation")
 
     objects = server.get_objects_node()
-    ws_object = objects.add_object(namespace, "WeatherStation")
+    ws_object = objects.add_object(namespace, "wsaheadhout")
 
     variables = {
         "ESP32_Chip_ID": "",
@@ -30,7 +30,7 @@ def main():
     print("Servidor OPC UA rodando na opc.tcp://0.0.0.0:4840/freeopcua/server/")
     try:
         while True:
-            time.sleep(1)
+            time.sleep(30)
             # Aqui servidor pode ler os valores atuais (se quiser monitorar)
             for var_name, var_node in var_nodes.items():
                 val = var_node.get_value()
