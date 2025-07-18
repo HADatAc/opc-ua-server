@@ -1,5 +1,4 @@
-package src.main.java.opcua;
-
+package com.example.opcua;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.api.Namespace;
