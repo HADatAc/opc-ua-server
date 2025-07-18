@@ -1,7 +1,7 @@
-package src.main.java.com.example.opcua;
+package com.example;
 
+import org.eclipse.milo.opcua.sdk.server.ManagedNamespace;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
-import org.eclipse.milo.opcua.sdk.server.api.ManagedNamespace;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
@@ -12,23 +12,20 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 
 public class ExampleNamespace extends ManagedNamespace {
 
-    private final OpcUaServer server;
-
     public ExampleNamespace(OpcUaServer server) {
-        super(server, "urn:example:namespace");
-        this.server = server;
+        super(server, "urn:example:weatherstation:namespace");
         createNodes();
     }
 
     private void createNodes() {
         UaFolderNode folderNode = new UaFolderNode(
-            server.getNodeMap(),
+            getNodeContext(),
             new NodeId(getNamespaceIndex(), "MyObjects"),
             new LocalizedText("MyObjects")
         );
 
-        server.getNodeMap().addNode(folderNode);
-        server.getUaNamespace().addReference(
+        getNodeMap().addNode(folderNode);
+        getUaNamespace().addReference(
             Identifiers.ObjectsFolder,
             Identifiers.Organizes,
             true,
@@ -37,19 +34,19 @@ public class ExampleNamespace extends ManagedNamespace {
             false
         );
 
-        UaVariableNode myVariable = UaVariableNode.builder(server.getNodeMap())
-            .setNodeId(new NodeId(getNamespaceIndex(), "MyVariable"))
-            .setBrowseName("MyVariable")
-            .setDisplayName(LocalizedText.english("MyVariable"))
-            .setDataType(Identifiers.Int32)
+        UaVariableNode temperatureNode = UaVariableNode.builder(getNodeContext())
+            .setNodeId(new NodeId(getNamespaceIndex(), "Temperature"))
+            .setBrowseName("Temperature")
+            .setDisplayName(LocalizedText.english("Temperature"))
+            .setDataType(Identifiers.Double)
             .setTypeDefinition(Identifiers.BaseDataVariableType)
-            .setValue(new DataValue(new Variant(42)))
+            .setValue(new DataValue(new Variant(20.0)))
             .build();
 
-        myVariable.setAccessLevel((byte) 0b11); // read/write
-        myVariable.setUserAccessLevel((byte) 0b11);
+        temperatureNode.setAccessLevel((byte) 0x03); // Read/Write
+        temperatureNode.setUserAccessLevel((byte) 0x03);
 
-        server.getNodeMap().addNode(myVariable);
-        folderNode.addOrganizes(myVariable);
+        getNodeMap().addNode(temperatureNode);
+        folderNode.addOrganizes(temperatureNode);
     }
 }
