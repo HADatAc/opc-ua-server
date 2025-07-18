@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV '/home/tiago-moreira/Secretária/git-hascorepo/opc-ua-server/opc-ua-server/venv'
+set -gx VIRTUAL_ENV /home/ubuntu/opc-ua-server/venv
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH
